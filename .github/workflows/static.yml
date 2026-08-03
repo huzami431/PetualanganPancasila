@@ -1,43 +1,640 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ksatria Pancasila — RPG PPKn</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #1a1035;
+    color: #fff;
+    -webkit-user-select: none; user-select: none;
+    overflow: hidden;
+  }
+  #app { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+  .screen {
+    display: none; width: 100%; height: 100%; max-width: 700px; max-height: 950px;
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
+    background: radial-gradient(ellipse at top, #2d1b5e 0%, #150a2e 70%);
+    overflow-y: auto;
+  }
+  .screen.active { display: flex; }
 
-on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ["main"]
+  h1 { font-size: 24px; margin: 0 0 6px; text-shadow: 0 3px 0 #000; color: #ffd700; }
+  h2 { font-size: 19px; margin: 0 0 10px; color: #ffd700; }
+  p.lead { font-size: 14px; line-height: 1.6; color: #dcd3f5; max-width: 480px; }
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+  button.mainbtn {
+    margin-top: 14px; padding: 12px 30px; font-size: 15px; font-weight: bold;
+    background: linear-gradient(180deg, #e52521, #a3120f);
+    color: #fff; border: 3px solid #ffd700; border-radius: 8px; cursor: pointer;
+  }
+  button.mainbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.mainbtn:active:not(:disabled) { transform: scale(0.96); }
+  button.ghostbtn {
+    margin-top: 10px; padding: 8px 20px; font-size: 13px;
+    background: transparent; color: #ffd700; border: 2px solid #ffd700; border-radius: 8px; cursor: pointer;
+  }
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+  /* Setup screen */
+  .formRow { width: 100%; max-width: 420px; margin-bottom: 12px; text-align: left; }
+  .formRow label { font-size: 12px; color: #ffd700; display: block; margin-bottom: 4px; }
+  .formRow input, .formRow select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid #5c3fa0;
+    background: #241249; color: #fff; font-size: 14px;
+  }
+  #roleGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 420px; margin-top: 6px; }
+  .roleCard {
+    background: #241249; border: 2px solid #5c3fa0; border-radius: 10px; padding: 10px; cursor: pointer; text-align: left;
+  }
+  .roleCard.selected { border-color: #ffd700; background: #382270; }
+  .roleCard canvas { display: block; margin: 0 auto 4px; }
+  .roleCard .rname { font-size: 13px; font-weight: bold; color: #ffd700; }
+  .roleCard .rdesc { font-size: 11px; color: #cfc4ee; margin-top: 2px; line-height: 1.4; }
+  .roleCard .rstat { font-size: 10px; color: #9d8fc9; margin-top: 4px; }
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  /* Battle screen */
+  #screenBattle { justify-content: flex-start; padding-top: 10px; }
+  #battleArena { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; margin-bottom: 6px; }
+  .combatant { display: flex; flex-direction: column; align-items: center; width: 45%; }
+  .combatant canvas { image-rendering: pixelated; }
+  .barWrap { width: 100%; background: #000; border: 2px solid #ffd700; border-radius: 6px; height: 16px; margin-top: 6px; overflow: hidden; }
+  .barFill { height: 100%; background: linear-gradient(90deg,#4caf50,#8bc34a); transition: width .3s; }
+  .barFillEnemy { height: 100%; background: linear-gradient(90deg,#e53935,#ff7043); transition: width .3s; }
+  .nameTag { font-size: 12px; font-weight: bold; margin-top: 4px; color: #ffd700; }
+  .hpText { font-size: 11px; color: #ccc; }
 
-jobs:
-  # Single deploy job since we're just deploying
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # Upload entire repository
-          path: '.'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+  #battleLog { min-height: 44px; font-size: 13px; color: #fff; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px 14px; margin: 4px 0 10px; width: 90%; }
+  #attackBtn { padding: 14px 36px; font-size: 17px; font-weight: bold; background: linear-gradient(180deg,#ffd700,#c9a300); color: #241200; border: none; border-radius: 10px; cursor: pointer; margin-bottom: 10px; }
+  #attackBtn:active { transform: scale(0.96); }
+  #streakTag { font-size: 12px; color: #ffd700; margin-bottom: 6px; }
+
+  /* Question modal */
+  #questionModal { position: absolute; inset: 0; background: rgba(5,0,20,0.92); display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px; }
+  #questionModal.active { display: flex; }
+  #qBox { background: #241249; border: 3px solid #ffd700; border-radius: 12px; padding: 20px; max-width: 480px; width: 100%; }
+  #qTopic { font-size: 11px; color: #ffb700; letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase; }
+  #qText { font-size: 16px; line-height: 1.5; margin-bottom: 16px; }
+  .optBtn { display: block; width: 100%; text-align: left; padding: 10px 14px; margin-bottom: 8px; background: #382270; color: #fff; border: 2px solid #5c3fa0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .optBtn:active { transform: scale(0.98); }
+  .optBtn.correct { background: #2e7d32; border-color: #66bb6a; }
+  .optBtn.wrong { background: #b71c1c; border-color: #ef5350; }
+  #resultLine { font-size: 13px; margin-top: 8px; color: #ffd700; min-height: 18px; }
+
+  #stats { font-size: 13px; color: #dcd3f5; margin-top: 8px; }
+  .storyText { font-size: 14px; line-height: 1.7; color: #eae2ff; max-width: 480px; margin-bottom: 10px; }
+
+  /* Leaderboard */
+  #leaderboardList { width: 100%; max-width: 420px; margin-top: 10px; text-align: left; }
+  .lbRow { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 10px; border-bottom: 1px solid #382270; }
+  .lbRow.me { background: rgba(255,215,0,0.15); border-radius: 6px; }
+  #syncStatus { font-size: 11px; color: #9d8fc9; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="screen active" id="screenStart">
+    <h1>⚔️ Ksatria Pancasila</h1>
+    <p class="lead">Nusantara diserang makhluk-makhluk gaib yang ingin merusak persatuan bangsa. Satu-satunya senjata ampuh melawan mereka adalah <b>ilmu kewarganegaraan</b>. Jawab soal PPKn dengan benar untuk melancarkan serangan!</p>
+    <button class="mainbtn" onclick="goToSetup()">Mulai Petualangan</button>
+    <button class="ghostbtn" onclick="openLeaderboard()">🏆 Papan Peringkat</button>
+  </div>
+
+  <div class="screen" id="screenSetup">
+    <h2>Buat Karaktermu</h2>
+    <div class="formRow">
+      <label for="inputName">Nama Pemain</label>
+      <input id="inputName" type="text" maxlength="24" placeholder="Contoh: Raka Pratama" oninput="validateSetup()">
+    </div>
+    <div class="formRow">
+      <label for="inputKelas">Kelas</label>
+      <input id="inputKelas" type="text" maxlength="16" placeholder="Contoh: XII IPA 1" oninput="validateSetup()">
+    </div>
+    <div class="formRow" style="margin-bottom:4px;">
+      <label>Pilih Role Karakter</label>
+    </div>
+    <div id="roleGrid"></div>
+    <button class="mainbtn" id="setupStartBtn" disabled onclick="startGame()">Mulai Bertarung</button>
+  </div>
+
+  <div class="screen" id="screenStory">
+    <h2 id="storyTitle"></h2>
+    <div class="storyText" id="storyText"></div>
+    <button class="mainbtn" onclick="beginBattle()">Lanjut Bertarung</button>
+  </div>
+
+  <div class="screen" id="screenBattle">
+    <h2 id="battleTitle" style="margin-top:6px;">Pertarungan</h2>
+    <div id="battleArena">
+      <div class="combatant">
+        <canvas id="playerCanvas" width="120" height="120"></canvas>
+        <div class="nameTag" id="playerNameTag">Ksatria</div>
+        <div class="barWrap"><div class="barFill" id="playerHpBar" style="width:100%"></div></div>
+        <div class="hpText" id="playerHpText">100/100</div>
+      </div>
+      <div class="combatant">
+        <canvas id="enemyCanvas" width="120" height="120"></canvas>
+        <div class="nameTag" id="enemyName">Musuh</div>
+        <div class="barWrap"><div class="barFillEnemy" id="enemyHpBar" style="width:100%"></div></div>
+        <div class="hpText" id="enemyHpText">100/100</div>
+      </div>
+    </div>
+    <div id="streakTag">Combo Benar Berturut: 0</div>
+    <div id="battleLog">Musuh menghadang jalanmu! Serang dengan pengetahuanmu.</div>
+    <button id="attackBtn" onclick="openQuestion()">🛡️ Serang dengan Pengetahuan</button>
+    <div id="stats"></div>
+  </div>
+
+  <div class="screen" id="screenVictory">
+    <h1>🏆 Kemenangan!</h1>
+    <p class="lead" id="victoryText"></p>
+    <div id="syncStatus"></div>
+    <div id="leaderboardList"></div>
+    <button class="mainbtn" onclick="restartGame()">Main Lagi dari Awal</button>
+  </div>
+
+  <div class="screen" id="screenGameOver">
+    <h1>💀 Kalah</h1>
+    <p class="lead" id="gameOverText"></p>
+    <div id="syncStatusGO"></div>
+    <button class="mainbtn" onclick="restartGame()">Coba Lagi</button>
+  </div>
+
+  <div class="screen" id="screenLeaderboard">
+    <h2>🏆 Papan Peringkat</h2>
+    <div id="lbFullList" style="width:100%;max-width:420px;"></div>
+    <button class="mainbtn" onclick="showScreen('screenStart')">Kembali</button>
+  </div>
+
+  <div id="questionModal">
+    <div id="qBox">
+      <div id="qTopic">PPKn</div>
+      <div id="qText">Pertanyaan...</div>
+      <div id="optionsWrap"></div>
+      <div id="resultLine"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+
+  // ================= KONFIGURASI SUPABASE =================
+  // Ganti dua nilai di bawah ini dengan Project URL dan anon public key dari
+  // Supabase Dashboard kamu (Settings > API). Buat tabel "leaderboard" dulu
+  // memakai SQL yang diberikan di penjelasan chat.
+  const SUPABASE_URL = "https://dvcgxhvonskuxcvbdloj.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_I6r3GE787slRhBgmsczYHw_3JTtiVjL";
+
+  let sb = null;
+  const supabaseConfigured = SUPABASE_URL.indexOf("YOUR-PROJECT-REF") === -1 && SUPABASE_ANON_KEY.indexOf("YOUR-ANON-PUBLIC-KEY") === -1;
+  if (supabaseConfigured && window.supabase) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  async function saveResultToSupabase(record) {
+    if (!sb) return { ok: false, reason: 'not_configured' };
+    try {
+      const { error } = await sb.from('leaderboard').insert([record]);
+      if (error) throw error;
+      return { ok: true };
+    } catch (e) {
+      console.warn('Gagal menyimpan ke Supabase:', e.message);
+      return { ok: false, reason: e.message };
+    }
+  }
+
+  async function fetchLeaderboard(limit) {
+    if (!sb) return [];
+    try {
+      const { data, error } = await sb.from('leaderboard')
+        .select('*')
+        .order('accuracy', { ascending: false })
+        .order('correct_count', { ascending: false })
+        .limit(limit || 10);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Gagal memuat papan peringkat:', e.message);
+      return [];
+    }
+  }
+
+  // ================= BANK SOAL PPKn SMA KELAS 12 =================
+  const QUESTIONS = [
+    { topic: "HAM", q: "Pelanggaran HAM berat diadili melalui Pengadilan HAM yang diatur dalam Undang-Undang Nomor...", opts: ["UU No. 26 Tahun 2000", "UU No. 39 Tahun 1999", "UU No. 5 Tahun 1998", "UU No. 12 Tahun 2005"], correct: 0 },
+    { topic: "Sistem Pemerintahan", q: "Lembaga negara yang berwenang membentuk undang-undang bersama Presiden adalah...", opts: ["Mahkamah Agung", "DPR", "DPD", "Komisi Yudisial"], correct: 1 },
+    { topic: "Kekuasaan Negara", q: "Kekuasaan untuk mengadili pelanggaran terhadap undang-undang disebut kekuasaan...", opts: ["Eksekutif", "Legislatif", "Yudikatif", "Federatif"], correct: 2 },
+    { topic: "Kekuasaan Negara", q: "Pembagian kekuasaan negara secara vertikal di Indonesia terlihat dari adanya pembagian antara...", opts: ["Presiden dan DPR", "Pemerintah pusat dan pemerintah daerah", "MA dan MK", "TNI dan Polri"], correct: 1 },
+    { topic: "Demokrasi Pancasila", q: "Prinsip demokrasi Pancasila menekankan pengambilan keputusan melalui...", opts: ["Voting mayoritas mutlak", "Musyawarah untuk mufakat", "Keputusan sepihak pemimpin", "Referendum langsung"], correct: 1 },
+    { topic: "Hubungan Internasional", q: "Kontribusi nyata Indonesia dalam misi perdamaian dunia di bawah PBB ditunjukkan dengan pengiriman...", opts: ["Pasukan Garuda", "Legiun Nusantara", "Batalyon Cakrabirawa", "Pasukan Merah Putih"], correct: 0 },
+    { topic: "Hubungan Internasional", q: "Sengketa antarnegara yang tidak terselesaikan secara diplomatik dapat dibawa ke...", opts: ["Mahkamah Konstitusi", "Mahkamah Internasional (ICJ)", "Komnas HAM", "Dewan Keamanan PBB saja"], correct: 1 },
+    { topic: "Ancaman NKRI", q: "Masuknya paham radikalisme yang bertentangan dengan Pancasila termasuk ancaman terhadap NKRI di bidang...", opts: ["Ekonomi", "Ideologi", "Sosial budaya", "Pertahanan"], correct: 1 },
+    { topic: "Ancaman NKRI", q: "Ketergantungan tinggi terhadap produk impor sehingga melemahkan produksi dalam negeri adalah contoh ancaman non-militer di bidang...", opts: ["Politik", "Ekonomi", "Ideologi", "Budaya"], correct: 1 },
+    { topic: "Persatuan Bangsa", q: "Semboyan yang menggambarkan persatuan dalam keberagaman bangsa Indonesia adalah...", opts: ["Tut Wuri Handayani", "Bhinneka Tunggal Ika", "Rawe-Rawe Rantas", "Gemah Ripah Loh Jinawi"], correct: 1 },
+    { topic: "Sistem Hukum", q: "Lembaga yang berwenang menguji undang-undang terhadap UUD Negara RI 1945 adalah...", opts: ["Mahkamah Agung", "Kejaksaan Agung", "Mahkamah Konstitusi", "Komisi Yudisial"], correct: 2 },
+    { topic: "HAM", q: "Instrumen HAM internasional yang menjadi dasar hukum HAM dunia adalah...", opts: ["Deklarasi Universal HAM 1948", "Piagam PBB 1945", "Konvensi Wina 1961", "Traktat London"], correct: 0 },
+    { topic: "Sistem Pemerintahan", q: "Sistem pemerintahan yang dianut oleh Negara Republik Indonesia adalah sistem...", opts: ["Parlementer", "Presidensial", "Monarki Konstitusional", "Semi-presidensial"], correct: 1 },
+    { topic: "Kedaulatan", q: "Menurut UUD NRI 1945 hasil amandemen, kedaulatan berada di tangan rakyat dan dilaksanakan menurut...", opts: ["Ketetapan MPR", "Undang-Undang Dasar", "Keputusan Presiden", "Perintah DPR"], correct: 1 },
+    { topic: "Hubungan Internasional", q: "Organisasi regional yang beranggotakan negara-negara di Asia Tenggara adalah...", opts: ["ASEAN", "APEC", "Uni Eropa", "OKI"], correct: 0 },
+    { topic: "Sistem Pemerintahan", q: "Fungsi DPR untuk mengawasi jalannya pemerintahan disebut fungsi...", opts: ["Legislasi", "Anggaran", "Pengawasan", "Yudikatif"], correct: 2 },
+    { topic: "Bela Negara", q: "Berikut ini yang merupakan wujud bela negara dalam kehidupan sehari-hari seorang pelajar adalah...", opts: ["Mengikuti wajib militer saja", "Belajar dengan tekun dan menjaga persatuan", "Mengabaikan aturan sekolah", "Bersikap acuh pada lingkungan"], correct: 1 },
+    { topic: "Sistem Hukum", q: "Peradilan internasional yang mengadili kejahatan genosida dan kejahatan terhadap kemanusiaan adalah...", opts: ["Mahkamah Pidana Internasional (ICC)", "Mahkamah Konstitusi", "Pengadilan Militer", "Pengadilan Tata Usaha Negara"], correct: 0 },
+    { topic: "Persatuan Bangsa", q: "Sikap yang mencerminkan toleransi dalam bingkai Bhinneka Tunggal Ika adalah...", opts: ["Memaksakan keyakinan pada orang lain", "Menghormati perbedaan agama dan budaya", "Mengucilkan kelompok minoritas", "Membeda-bedakan suku dalam pergaulan"], correct: 1 },
+    { topic: "Pancasila", q: "Nilai dasar Pancasila bersifat...", opts: ["Berubah sesuai kepentingan penguasa", "Tetap dan tidak berubah", "Hanya berlaku pada masa Orde Baru", "Dapat diganti dengan ideologi lain"], correct: 1 },
+    { topic: "Pancasila", q: "Pancasila sebagai ideologi terbuka artinya...", opts: ["Nilai dasarnya boleh diubah bebas", "Mampu menyesuaikan perkembangan zaman tanpa mengubah nilai dasarnya", "Tertutup dari pengaruh luar sepenuhnya", "Hanya berlaku bagi pejabat negara"], correct: 1 },
+    { topic: "Sistem Hukum", q: "Lembaga penegak hukum yang bertugas melakukan penuntutan di pengadilan adalah...", opts: ["Kepolisian", "Kejaksaan", "Advokat", "Komisi Yudisial"], correct: 1 },
+    { topic: "Ancaman NKRI", q: "Lunturnya nilai gotong royong akibat gaya hidup individualis merupakan contoh ancaman di bidang...", opts: ["Sosial budaya", "Militer", "Politik", "Pertahanan"], correct: 0 },
+    { topic: "Wawasan Nusantara", q: "Konsep yang memandang wilayah Indonesia (darat, laut, udara) sebagai satu kesatuan utuh disebut...", opts: ["Wawasan Nusantara", "Otonomi Daerah", "Desentralisasi", "Dekonsentrasi"], correct: 0 },
+    { topic: "Hubungan Internasional", q: "Konferensi Asia Afrika yang menjadi cikal bakal Gerakan Non-Blok diselenggarakan pada tahun 1955 di kota...", opts: ["Jakarta", "Bandung", "Yogyakarta", "Surabaya"], correct: 1 },
+    { topic: "HAM", q: "Salah satu tugas Komnas HAM adalah...", opts: ["Menjatuhkan vonis pidana", "Melakukan pengkajian, penelitian, dan pemantauan pelaksanaan HAM", "Membuat undang-undang", "Menetapkan anggaran negara"], correct: 1 },
+    { topic: "Kekuasaan Negara", q: "Prinsip check and balances antar lembaga negara bertujuan untuk...", opts: ["Mempercepat pengesahan undang-undang", "Mencegah penyalahgunaan kekuasaan", "Memberi kekuasaan penuh pada eksekutif", "Menghilangkan peran DPR"], correct: 1 },
+    { topic: "Hubungan Internasional", q: "Ratifikasi perjanjian internasional oleh Indonesia pada umumnya disahkan melalui...", opts: ["Undang-Undang atau Keputusan Presiden", "Surat edaran menteri", "Keputusan gubernur", "Instruksi militer"], correct: 0 },
+    { topic: "Otonomi Daerah", q: "Pemberian wewenang kepada daerah untuk mengatur dan mengurus urusan pemerintahannya sendiri disebut...", opts: ["Sentralisasi", "Otonomi daerah", "Dekonsentrasi total", "Federalisme"], correct: 1 },
+    { topic: "Persatuan Bangsa", q: "Pendekatan yang tepat untuk menjaga integrasi nasional adalah kombinasi pendekatan...", opts: ["Kekerasan dan represif", "Kesejahteraan dan keamanan", "Diam dan membiarkan", "Individualisme"], correct: 1 },
+  ];
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ================= ROLE KARAKTER =================
+  const ROLES = {
+    swordsman: { key: "swordsman", label: "Pendekar Pedang", desc: "Seimbang antara serangan & pertahanan.", maxHp: 110, dmgRange: [14, 22], color: "#2d4fa3" },
+    archer:    { key: "archer",    label: "Pemanah",         desc: "Gesit, bonus combo lebih besar.",        maxHp: 90,  dmgRange: [16, 24], color: "#3a7d44" },
+    wizard:    { key: "wizard",    label: "Penyihir",        desc: "Serangan sihir dahsyat, HP rentan.",      maxHp: 80,  dmgRange: [20, 30], color: "#6a3fa0" },
+    guardian:  { key: "guardian",  label: "Ksatria Perisai", desc: "HP tebal, serangan lebih ringan.",        maxHp: 140, dmgRange: [10, 16], color: "#a3120f" },
+  };
+  let selectedRole = null;
+
+  // ================= MUSUH (MITOLOGI NUSANTARA) =================
+  const ENEMY_TEMPLATES = [
+    { name: "Kuntilanak", hp: 100, atk: [10,18], color: "#e6e6fa", story: "Sesosok kuntilanak muncul dari pohon beringin tua, tertawa mengejek kebodohan warga tentang hukum negaranya." },
+    { name: "Genderuwo", hp: 130, atk: [12,20], color: "#5a3d2b", story: "Genderuwo raksasa menghadang di persimpangan desa, menantang siapa pun yang berani lewat tanpa memahami hak dan kewajibannya sebagai warga negara." },
+    { name: "Wewe Gombel", hp: 120, atk: [10,18], color: "#3a5a40", story: "Wewe Gombel bersembunyi di balik kabut, mencoba menyesatkan arah para pejalan yang lupa pada nilai persatuan bangsa." },
+    { name: "Rangda", hp: 150, atk: [14,22], color: "#8b0000", story: "Rangda, ratu leak dari Bali, murka karena semangat gotong royong desa mulai pudar." },
+    { name: "Batara Kala", hp: 200, atk: [16,26], color: "#2b1b0e", story: "Batara Kala, penguasa kegelapan, bangkit hendak menelan persatuan Nusantara. Inilah pertarungan terakhirmu." },
+  ];
+
+  let currentEnemyIndex = 0;
+  let enemy = null;
+  let player = { name: "", kelas: "", role: null, hp: 100, maxHp: 100 };
+  let streak = 0;
+  let questionPool = [];
+  let correctCount = 0, totalAnswered = 0;
+  let battleLocked = false;
+
+  const screens = {};
+  document.querySelectorAll('.screen').forEach(s => screens[s.id] = s);
+  window.showScreen = function(id) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[id].classList.add('active');
+  };
+
+  // ---- Setup screen: build role cards ----
+  function drawRoleIcon(canvas, role) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,60,60);
+    ctx.save();
+    ctx.translate(30,32);
+    ctx.fillStyle = role.color;
+    ctx.beginPath(); ctx.arc(0,-8,14,0,Math.PI*2); ctx.fill();
+    ctx.fillRect(-12,4,24,16);
+    ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 2;
+    if (role.key === 'swordsman') { ctx.beginPath(); ctx.moveTo(14,-10); ctx.lineTo(26,-24); ctx.stroke(); }
+    if (role.key === 'archer') { ctx.beginPath(); ctx.arc(16,-2,14,-1.1,1.1); ctx.stroke(); }
+    if (role.key === 'wizard') { ctx.beginPath(); ctx.moveTo(16,10); ctx.lineTo(24,-22); ctx.stroke(); ctx.beginPath(); ctx.arc(24,-24,4,0,Math.PI*2); ctx.fillStyle="#ffd700"; ctx.fill(); }
+    if (role.key === 'guardian') { ctx.beginPath(); ctx.arc(-16,0,10,0,Math.PI*2); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function buildRoleGrid() {
+    const grid = document.getElementById('roleGrid');
+    grid.innerHTML = '';
+    Object.values(ROLES).forEach(role => {
+      const card = document.createElement('div');
+      card.className = 'roleCard';
+      card.id = 'role_' + role.key;
+      card.onclick = () => selectRole(role.key);
+      const canvas = document.createElement('canvas');
+      canvas.width = 60; canvas.height = 60;
+      card.appendChild(canvas);
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'rname'; nameDiv.textContent = role.label;
+      card.appendChild(nameDiv);
+      const descDiv = document.createElement('div');
+      descDiv.className = 'rdesc'; descDiv.textContent = role.desc;
+      card.appendChild(descDiv);
+      const statDiv = document.createElement('div');
+      statDiv.className = 'rstat'; statDiv.textContent = 'HP ' + role.maxHp + ' • ATK ' + role.dmgRange[0] + '-' + role.dmgRange[1];
+      card.appendChild(statDiv);
+      grid.appendChild(card);
+      drawRoleIcon(canvas, role);
+    });
+  }
+
+  window.selectRole = function(key) {
+    selectedRole = ROLES[key];
+    document.querySelectorAll('.roleCard').forEach(c => c.classList.remove('selected'));
+    document.getElementById('role_' + key).classList.add('selected');
+    validateSetup();
+  };
+
+  window.validateSetup = function() {
+    const name = document.getElementById('inputName').value.trim();
+    const kelas = document.getElementById('inputKelas').value.trim();
+    document.getElementById('setupStartBtn').disabled = !(name && kelas && selectedRole);
+  };
+
+  window.goToSetup = function() {
+    buildRoleGrid();
+    showScreen('screenSetup');
+  };
+
+  // ---- Sprites ----
+  function drawBlob(canvas, color, mood) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,120,120);
+    ctx.save();
+    ctx.translate(60, 65);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(-40, 20);
+    ctx.quadraticCurveTo(-45, -40, 0, -45);
+    ctx.quadraticCurveTo(45, -40, 40, 20);
+    ctx.quadraticCurveTo(30, 40, 0, 35);
+    ctx.quadraticCurveTo(-30, 40, -40, 20);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(-15, -5, 9, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, -5, 9, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = mood === 'hurt' ? "#ff3333" : "#000";
+    ctx.beginPath(); ctx.arc(-15, -5, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, -5, 4, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = "#000"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (mood === 'hurt') { ctx.arc(0, 18, 8, Math.PI, 0); } else { ctx.moveTo(-10, 18); ctx.lineTo(10, 18); }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlayer(mood) {
+    const canvas = document.getElementById('playerCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,120,120);
+    const role = player.role || ROLES.swordsman;
+    ctx.save();
+    ctx.translate(60, 60);
+    ctx.fillStyle = "#e52521";
+    ctx.beginPath();
+    ctx.moveTo(-25, -10); ctx.lineTo(-35, 45); ctx.lineTo(35, 45); ctx.lineTo(25, -10);
+    ctx.fill();
+    ctx.fillStyle = role.color;
+    ctx.fillRect(-18, -10, 36, 40);
+    ctx.fillStyle = "#ffcc99";
+    ctx.beginPath(); ctx.arc(0, -25, 18, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#ffd700";
+    ctx.fillRect(-18, -33, 36, 7);
+    ctx.fillStyle = mood === 'attack' ? "#ffd700" : "#000";
+    ctx.beginPath(); ctx.arc(-6, -25, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -25, 3, 0, Math.PI*2); ctx.fill();
+    // weapon accessory per role
+    ctx.strokeStyle = "#ffd700"; ctx.lineWidth = 4;
+    if (role.key === 'swordsman') { ctx.beginPath(); ctx.moveTo(28,-5); ctx.lineTo(48,-35); ctx.stroke(); }
+    if (role.key === 'archer') { ctx.beginPath(); ctx.arc(30,10,22,-1.2,1.2); ctx.stroke(); }
+    if (role.key === 'wizard') { ctx.beginPath(); ctx.moveTo(28,20); ctx.lineTo(40,-30); ctx.stroke(); ctx.beginPath(); ctx.arc(40,-34,5,0,Math.PI*2); ctx.fillStyle="#c084fc"; ctx.fill(); }
+    if (role.key === 'guardian') { ctx.fillStyle = "#c9a300"; ctx.beginPath(); ctx.ellipse(-30,10,10,16,0,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // ================= FLOW GAME =================
+  window.startGame = function() {
+    player.name = document.getElementById('inputName').value.trim();
+    player.kelas = document.getElementById('inputKelas').value.trim();
+    player.role = selectedRole;
+    player.maxHp = selectedRole.maxHp;
+    player.hp = player.maxHp;
+
+    currentEnemyIndex = 0;
+    correctCount = 0; totalAnswered = 0;
+    questionPool = shuffle(QUESTIONS);
+    loadStory();
+  };
+
+  function loadStory() {
+    const t = ENEMY_TEMPLATES[currentEnemyIndex];
+    document.getElementById('storyTitle').textContent = "Musuh " + (currentEnemyIndex+1) + " dari " + ENEMY_TEMPLATES.length + ": " + t.name;
+    document.getElementById('storyText').textContent = t.story;
+    showScreen('screenStory');
+  }
+
+  window.beginBattle = function() {
+    const t = ENEMY_TEMPLATES[currentEnemyIndex];
+    enemy = { name: t.name, hp: t.hp, maxHp: t.hp, atk: t.atk, color: t.color };
+    streak = 0;
+    battleLocked = false;
+    document.getElementById('battleTitle').textContent = "Melawan " + enemy.name;
+    document.getElementById('enemyName').textContent = enemy.name;
+    document.getElementById('playerNameTag').textContent = player.name + ' (' + player.role.label + ') — Kelas ' + player.kelas;
+    document.getElementById('battleLog').textContent = enemy.name + " siap menyerang! Jawab soal dengan benar untuk melancarkan seranganmu.";
+    updateBars();
+    drawPlayer('idle');
+    drawBlob(document.getElementById('enemyCanvas'), enemy.color, 'idle');
+    document.getElementById('attackBtn').disabled = false;
+    showScreen('screenBattle');
+  };
+
+  function updateBars() {
+    document.getElementById('playerHpBar').style.width = Math.max(0,(player.hp/player.maxHp*100)) + '%';
+    document.getElementById('playerHpText').textContent = Math.max(0,player.hp) + '/' + player.maxHp;
+    document.getElementById('enemyHpBar').style.width = Math.max(0,(enemy.hp/enemy.maxHp*100)) + '%';
+    document.getElementById('enemyHpText').textContent = Math.max(0,enemy.hp) + '/' + enemy.maxHp;
+    document.getElementById('streakTag').textContent = 'Combo Benar Berturut: ' + streak;
+    document.getElementById('stats').textContent = 'Akurasi PPKn: ' + correctCount + '/' + totalAnswered + (totalAnswered ? ' (' + Math.round(correctCount/totalAnswered*100) + '%)' : '');
+  }
+
+  let currentQuestion = null;
+  window.openQuestion = function() {
+    if (battleLocked) return;
+    if (questionPool.length === 0) questionPool = shuffle(QUESTIONS);
+    currentQuestion = questionPool.pop();
+    totalAnswered++;
+    document.getElementById('qTopic').textContent = currentQuestion.topic;
+    document.getElementById('qText').textContent = currentQuestion.q;
+    document.getElementById('resultLine').textContent = '';
+    const wrap = document.getElementById('optionsWrap');
+    wrap.innerHTML = '';
+    currentQuestion.opts.forEach((opt, i) => {
+      const b = document.createElement('button');
+      b.className = 'optBtn';
+      b.textContent = opt;
+      b.onclick = () => answerQuestion(i, b);
+      wrap.appendChild(b);
+    });
+    document.getElementById('questionModal').classList.add('active');
+  };
+
+  function answerQuestion(idx, btnEl) {
+    const buttons = document.querySelectorAll('.optBtn');
+    buttons.forEach(b => b.onclick = null);
+    const isCorrect = idx === currentQuestion.correct;
+    if (isCorrect) {
+      btnEl.classList.add('correct');
+      correctCount++;
+      streak++;
+    } else {
+      btnEl.classList.add('wrong');
+      buttons[currentQuestion.correct].classList.add('correct');
+      streak = 0;
+    }
+    document.getElementById('resultLine').textContent = isCorrect
+      ? '✅ Benar! Serangan berhasil dilancarkan!'
+      : '❌ Kurang tepat. Jawaban benar disorot hijau.';
+
+    setTimeout(() => {
+      document.getElementById('questionModal').classList.remove('active');
+      resolveTurn(isCorrect);
+    }, 1400);
+  }
+
+  function resolveTurn(playerCorrect) {
+    if (playerCorrect) {
+      const [minD, maxD] = player.role.dmgRange;
+      const base = minD + Math.floor(Math.random()*(maxD-minD+1));
+      const bonus = Math.min(streak * 3, 15);
+      const dmg = base + bonus;
+      enemy.hp -= dmg;
+      drawBlob(document.getElementById('enemyCanvas'), enemy.color, 'hurt');
+      document.getElementById('battleLog').textContent = 'Serangan ' + player.role.label.toLowerCase() + '-mu mengenai ' + enemy.name + ' sebesar ' + dmg + ' poin!' + (bonus > 0 ? ' (+bonus combo ' + bonus + ')' : '');
+      drawPlayer('attack');
+    } else {
+      const dmg = Math.floor(Math.random()*(enemy.atk[1]-enemy.atk[0]+1)) + enemy.atk[0];
+      player.hp -= dmg;
+      document.getElementById('battleLog').textContent = enemy.name + ' balik menyerangmu, kamu kehilangan ' + dmg + ' HP!';
+      drawPlayer('hurt');
+      drawBlob(document.getElementById('enemyCanvas'), enemy.color, 'idle');
+    }
+    updateBars();
+
+    setTimeout(() => {
+      drawPlayer('idle');
+      drawBlob(document.getElementById('enemyCanvas'), enemy.color, 'idle');
+      if (enemy.hp <= 0) {
+        enemyDefeated();
+      } else if (player.hp <= 0) {
+        gameOver();
+      }
+    }, 500);
+  }
+
+  function enemyDefeated() {
+    battleLocked = true;
+    document.getElementById('battleLog').textContent = enemy.name + ' berhasil dikalahkan oleh kekuatan pengetahuanmu!';
+    document.getElementById('attackBtn').disabled = true;
+    player.hp = Math.min(player.maxHp, player.hp + Math.round(player.maxHp*0.15));
+    updateBars();
+    setTimeout(() => {
+      currentEnemyIndex++;
+      if (currentEnemyIndex >= ENEMY_TEMPLATES.length) {
+        victory();
+      } else {
+        loadStory();
+      }
+    }, 1600);
+  }
+
+  async function victory() {
+    const acc = totalAnswered ? Math.round(correctCount/totalAnswered*100) : 0;
+    document.getElementById('victoryText').innerHTML =
+      player.name + ' (' + player.role.label + ', Kelas ' + player.kelas + ') berhasil menaklukkan seluruh makhluk gaib!<br><br>' +
+      'Soal dijawab benar: ' + correctCount + ' dari ' + totalAnswered + ' (' + acc + '%)';
+    showScreen('screenVictory');
+    await syncAndShowLeaderboard('Menang', document.getElementById('syncStatus'), document.getElementById('leaderboardList'));
+  }
+
+  async function gameOver() {
+    document.getElementById('gameOverText').innerHTML =
+      enemy.name + ' berhasil mengalahkan ' + player.name + '. Perkuat pemahaman PPKn-mu dan coba lagi!<br><br>' +
+      'Soal dijawab benar: ' + correctCount + ' dari ' + totalAnswered;
+    showScreen('screenGameOver');
+    await syncAndShowLeaderboard('Kalah', document.getElementById('syncStatusGO'), null);
+  }
+
+  async function syncAndShowLeaderboard(result, statusEl, listEl) {
+    const acc = totalAnswered ? Math.round((correctCount/totalAnswered)*10000)/100 : 0;
+    const record = {
+      name: player.name,
+      kelas: player.kelas,
+      role: player.role.label,
+      correct_count: correctCount,
+      total_answered: totalAnswered,
+      accuracy: acc,
+      result: result,
+      enemy_reached: currentEnemyIndex + 1
+    };
+    if (!supabaseConfigured) {
+      statusEl.textContent = 'Mode lokal: hasil belum tersinkron ke Supabase (URL/API key belum diatur).';
+      return;
+    }
+    statusEl.textContent = 'Menyimpan hasil ke Supabase...';
+    const res = await saveResultToSupabase(record);
+    statusEl.textContent = res.ok ? 'Hasil tersimpan ke papan peringkat online ✅' : 'Gagal menyimpan ke Supabase: ' + res.reason;
+    if (listEl) {
+      const top = await fetchLeaderboard(10);
+      renderLeaderboard(listEl, top);
+    }
+  }
+
+  function renderLeaderboard(el, rows) {
+    if (!rows.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<h2 style="margin-top:16px;">Papan Peringkat</h2>';
+    rows.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'lbRow' + (r.name === player.name && r.kelas === player.kelas ? ' me' : '');
+      div.innerHTML = '<span>' + r.name + ' — ' + r.kelas + ' (' + r.role + ')</span><span>' + r.accuracy + '%</span>';
+      el.appendChild(div);
+    });
+  }
+
+  window.openLeaderboard = async function() {
+    showScreen('screenLeaderboard');
+    const el = document.getElementById('lbFullList');
+    if (!supabaseConfigured) {
+      el.innerHTML = '<p class="lead">Papan peringkat online belum aktif. Atur SUPABASE_URL dan SUPABASE_ANON_KEY di dalam file game untuk mengaktifkan mode Supabase.</p>';
+      return;
+    }
+    el.innerHTML = '<p class="lead">Memuat...</p>';
+    const top = await fetchLeaderboard(20);
+    if (!top.length) { el.innerHTML = '<p class="lead">Belum ada data. Jadilah yang pertama!</p>'; return; }
+    el.innerHTML = '';
+    top.forEach((r, i) => {
+      const div = document.createElement('div');
+      div.className = 'lbRow';
+      div.innerHTML = '<span>' + (i+1) + '. ' + r.name + ' — ' + r.kelas + ' (' + r.role + ')</span><span>' + r.accuracy + '%</span>';
+      el.appendChild(div);
+    });
+  };
+
+  window.restartGame = function() {
+    document.getElementById('inputName').value = player.name || '';
+    document.getElementById('inputKelas').value = player.kelas || '';
+    selectedRole = null;
+    goToSetup();
+  };
+
+})();
+</script>
+</body>
+</html>
